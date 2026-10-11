@@ -1,0 +1,55 @@
+[project]
+name = "agent-isolation"
+version = "0.1.0"
+description = "Concurrency control for AI agents that share state: snapshot isolation, conflict detection, tool-call compensation, and serializability checked on every run."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Yagmur Sahin" }]
+keywords = [
+    "ai-agents",
+    "concurrency-control",
+    "isolation",
+    "mvcc",
+    "multi-agent-systems",
+    "serializability",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries",
+]
+# No runtime dependencies. The store is SQLite from the standard library.
+dependencies = []
+
+[project.scripts]
+aiso = "agent_isolation.cli:main"
+
+[project.urls]
+Repository = "https://github.com/ygmrs/agent-isolation"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_isolation"]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

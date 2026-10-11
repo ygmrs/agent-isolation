@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync from the lockfile
+        run: uv sync --locked --all-extras --dev
+
+      - name: Lint
+        run: uv run ruff check src tests examples
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Anomaly matrix
+        run: uv run aiso anomalies
+
+      - name: Benchmark
+        run: uv run aiso bench --agents 6 --txns 20
+
+      - name: Decision workload
+        run: uv run aiso decisions --agents 6 --txns 12
+
+      - name: The checker must be able to fail
+        run: |
+          if uv run aiso check --isolation none --agents 6 --txns 20; then
+            echo "an uncontrolled history was accepted as serializable"
+            exit 1
+          fi
+
+      - name: Worked example
+        run: uv run python examples/booking_agent.py
