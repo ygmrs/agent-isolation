@@ -1,6 +1,6 @@
 # agent-isolation
 
-Concurrency control for multi-agent systems: snapshot isolation, write-set conflict detection, and compensating rollback for side effects already taken.
+Concurrency control for AI agents that share state: snapshot isolation, conflict detection, tool-call compensation, and serializability checked on every run.
 
 Two agents read the same state, think, and write. Neither sees the other. The framework reports a coordination failure, but nothing failed: both agents did what they were told against a world that changed while they were deciding.
 
@@ -12,16 +12,13 @@ uv run aiso anomalies     # the four anomalies at every isolation level
 uv run aiso bench         # throughput, abort rate, lost updates
 uv run aiso decisions     # agents deciding from shared state they do not write
 uv run aiso sweep         # abort rate as the inference window grows
+uv run aiso check         # verify a run's history is serializable
 uv run pytest             # 43 tests
 ```
 
 No runtime dependencies. Storage is SQLite from the standard library.
 
 ## The four anomalies
-
-```
-uv run aiso anomalies
-```
 
 | Anomaly | `none` | `snapshot` | `serializable` |
 |---|---|---|---|
@@ -77,9 +74,7 @@ Thread scheduling moves these numbers between runs; the shape does not. Lost upd
 
 ## Every run has to prove itself
 
-The checker rebuilds the dependency graph from the commit log and looks for a cycle. No cycle means the run could have happened one transaction at a time. A cycle means it couldn't, and you get the cycle.
-
-Checking final values only finds what you thought to look for. It says nothing about the run where the damage happened and the numbers still added up.
+The checker rebuilds the dependency graph from the commit log and looks for a cycle. No cycle means the run could have happened one transaction at a time; a cycle means it couldn't, and you get the cycle. Checking final values only finds what you thought to look for — it says nothing about the run where the damage happened and the numbers still added up.
 
 ```
 $ uv run aiso check --isolation none
@@ -138,10 +133,12 @@ uv run python examples/booking_agent.py
 ```
 
 ```
-  none          booked=8  remaining=3  confirmations=8  oversold=4
-  snapshot      booked=4  remaining=0  confirmations=4  oversold=0
-  serializable  booked=4  remaining=0  confirmations=4  oversold=0
+  none          booked=8  remaining=3  confirmations=8  oversold=4  dangling holds=0
+  snapshot      booked=4  remaining=0  confirmations=4  oversold=0  dangling holds=0
+  serializable  booked=4  remaining=0  confirmations=4  oversold=0  dangling holds=0
 ```
+
+Under `none` the seats oversell by four. Under either real level exactly four book, no confirmation goes out for a booking that never committed, and every abandoned hold is released by its compensation.
 
 ## Scope
 
@@ -153,7 +150,7 @@ is where that lives.
 
 ## Design
 
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers the commit protocol, the data model, the validation rules per isolation level, the effect model, the serializability checker, and the boundaries of the design.
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers the commit protocol, the validation rules, the effect model, and the boundaries of the design.
 
 ```
 src/agent_isolation/
